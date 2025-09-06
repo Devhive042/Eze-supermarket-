@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Eze Supermarket – Add Money</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  *{box-sizing:border-box;font-family:Poppins,system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Arial;}
+  :root{--blue:#007bff;--bg:#f5f7fb;--card:#fff;--text:#333}
+  body{margin:0;min-height:100vh;background:var(--bg);color:var(--text);display:flex;flex-direction:column;transition:.2s}
+  body.dark{--bg:#111216;--card:#1f2124;--text:#eaeaea}
+
+  header{background:var(--blue);color:#fff;padding:12px 16px;display:flex;align-items:center;justify-content:space-between}
+  header .left{display:flex;align-items:center;gap:12px}
+  header h1{margin:0;font-size:18px}
+  header .right{display:flex;align-items:center;gap:12px}
+  .balance{font-weight:600}
+
+  nav{position:fixed;left:-260px;top:0;height:100vh;width:240px;background:var(--card);box-shadow:2px 0 10px rgba(0,0,0,.12);padding:20px;transition:left .28s;z-index:1200}
+  nav.active{left:0}
+  nav h2{margin:0 0 16px;color:var(--blue)}
+  nav ul{list-style:none;padding:0;margin:0}
+  nav li{margin-bottom:12px}
+  nav a{text-decoration:none;color:inherit;display:block;padding:8px;border-radius:8px}
+  nav a:hover{background:var(--blue);color:#fff}
+
+  .overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);display:none;z-index:1100}
+  .overlay.active{display:block}
+
+  main{flex:1;padding:20px;margin-top:10px}
+  h2{color:var(--blue);margin-top:0}
+  .card{background:var(--card);padding:18px;border-radius:12px;box-shadow:0 6px 18px rgba(0,0,0,.06);margin-bottom:16px}
+  body.dark .card{background:var(--card);}
+
+  label{display:block;margin-bottom:6px;font-weight:500}
+  input, select{width:100%;padding:10px;margin-bottom:14px;border:1px solid #ccc;border-radius:6px}
+  button.primary{background:var(--blue);color:#fff;border:none;padding:10px 14px;border-radius:8px;cursor:pointer}
+  button.primary:hover{opacity:.9}
+</style>
+</head>
+<body>
+
+<div id="overlay" class="overlay"></div>
+
+<nav id="sidebar">
+  <h2>Eze Menu</h2>
+  <ul>
+    <li><a href="dashboard.html">🏠 Dashboard</a></li>
+    <li><a href="profile.html">👤 Profile</a></li>
+    <li><a href="settings.html">⚙️ Settings</a></li>
+    <li><a href="add-money.html" class="active">💳 Add Money</a></li>
+    <li><a href="cart.html">🛒 Cart</a></li>
+    <li><a href="products.html">📦 Products</a></li>
+    <li><a href="receipts.html">🧾 Receipts</a></li>
+    <li><a href="history.html">📊 History</a></li>
+  </ul>
+</nav>
+
+<header>
+  <div class="left">
+    <button id="menuBtn" style="background:transparent;border:1px solid rgba(255,255,255,.17);color:#fff;padding:6px 8px;border-radius:6px;cursor:pointer">☰</button>
+    <h1>Add Money</h1>
+  </div>
+  <div class="right">
+    <div class="balance">Balance: ₦<span id="balance">0</span></div>
+    <button id="logoutBtn" class="primary">Logout</button>
+  </div>
+</header>
+
+<main>
+  <h2>Top-up Balance</h2>
+
+  <div class="card">
+    <label>Amount to Add (₦)</label>
+    <input type="number" id="amount" placeholder="Min ₦500" min="500">
+
+    <label>Payment Method</label>
+    <select id="method">
+      <option value="card">💳 Card</option>
+      <option value="transfer">🏦 Bank Transfer</option>
+    </select>
+
+    <div id="cardFields">
+      <label>Card Type</label>
+      <select id="cardType">
+        <option value="Verve">Verve</option>
+        <option value="Visa">Visa</option>
+        <option value="Mastercard">Mastercard</option>
+      </select>
+
+      <label>Card Number</label>
+      <input type="text" id="cardNumber" placeholder="0000 0000 0000 0000">
+
+      <label>Expiry Date</label>
+      <input type="text" id="expiry" placeholder="MM/YY">
+
+      <label>CVV</label>
+      <input type="text" id="cvv" placeholder="123">
+    </div>
+
+    <div id="transferFields" style="display:none">
+      <p>Send money to:</p>
+      <p><strong>Account:</strong> 7033087993</p>
+      <p><strong>Bank:</strong> Eze Supermarket Bank</p>
+      <label>Reference Code</label>
+      <input type="text" id="refCode" placeholder="Enter reference code">
+    </div>
+
+    <button id="addBtn" class="primary">Add Money</button>
+  </div>
+</main>
+<script>
+const menuBtn = document.getElementById('menuBtn');
+const sidebar = document.getElementById('sidebar');
+const overlay = document.getElementById('overlay');
+
+menuBtn.onclick = () => { sidebar.classList.add('active'); overlay.classList.add('active'); };
+overlay.onclick = () => { sidebar.classList.remove('active'); overlay.classList.remove('active'); };
+document.querySelectorAll('#sidebar a').forEach(a => { 
+  a.onclick = () => { sidebar.classList.remove('active'); overlay.classList.remove('active'); };
+});
+
+const activeUser = JSON.parse(localStorage.getItem('activeUser')||'{}');
+if(!activeUser || !activeUser.email){ location.href='login.html'; }
+
+const balanceEl = document.getElementById('balance');
+function renderBalance(){ balanceEl.textContent = Number(activeUser.balance||0).toLocaleString(); }
+renderBalance();
+
+// Toggle fields based on method
+const method = document.getElementById('method');
+const cardFields = document.getElementById('cardFields');
+const transferFields = document.getElementById('transferFields');
+
+method.addEventListener('change', ()=>{
+  if(method.value==='card'){ cardFields.style.display='block'; transferFields.style.display='none'; }
+  else{ cardFields.style.display='none'; transferFields.style.display='block'; }
+});
+
+document.getElementById('addBtn').onclick = ()=>{
+  const amount = Number(document.getElementById('amount').value);
+  if(amount < 500){ alert('Minimum amount is ₦500'); return; }
+
+  let methodUsed = method.value;
+  let reference = '';
+  
+  if(methodUsed==='card'){
+    const card = document.getElementById('cardNumber').value.replace(/\s/g,'');
+    const exp = document.getElementById('expiry').value.trim();
+    const cvv = document.getElementById('cvv').value.trim();
+    const cardType = document.getElementById('cardType').value;
+
+    if(!/^\d{16}$/.test(card)){ alert('Card number must be 16 digits'); return; }
+    if(!/^(0[1-9]|1[0-2])\/\d{2}$/.test(exp)){ alert('Expiry must be MM/YY'); return; }
+    if(!/^\d{3}$/.test(cvv)){ alert('CVV must be 3 digits'); return; }
+
+    reference = `${cardType} ****${card.slice(-4)}`;
+  } else {
+    const ref = document.getElementById('refCode').value.trim();
+    if(!ref){ alert('Enter reference code'); return; }
+    reference = 'Transfer Ref: '+ref;
+  }
+
+  // Update balance
+  activeUser.balance = (Number(activeUser.balance||0)+amount);
+  localStorage.setItem('activeUser', JSON.stringify(activeUser));
+  renderBalance();
+
+  // Add top-up to history for this user only
+  let history = JSON.parse(localStorage.getItem('transactions')||'[]');
+  const txn = {
+    id:'TXN-'+Date.now(),
+    user: activeUser.email,
+    amount,
+    method: methodUsed,
+    status:'PAID',
+    time:new Date().toLocaleString(),
+    reference
+  };
+  history.push(txn);
+  localStorage.setItem('transactions', JSON.stringify(history));
+
+  alert('₦'+amount.toLocaleString()+' added successfully via '+methodUsed);
+  document.getElementById('amount').value='';
+  if(methodUsed==='card'){ 
+    document.getElementById('cardNumber').value=''; 
+    document.getElementById('expiry').value=''; 
+    document.getElementById('cvv').value=''; 
+    document.getElementById('cardType').selectedIndex = 0;
+  } else { document.getElementById('refCode').value=''; }
+};
+
+// Logout
+document.getElementById('logoutBtn').onclick = ()=>{
+  localStorage.removeItem('activeUser');
+  location.href='login.html';
+};
+
+// Dark theme sync
+const darkTheme = localStorage.getItem('theme');
+if(darkTheme==='dark'){ document.body.classList.add('dark'); }
+window.addEventListener('storage', (e)=>{
+  if(e.key==='theme'){ document.body.classList.toggle('dark', localStorage.getItem('theme')==='dark'); }
+});
+</script>
+</body>
+</html>

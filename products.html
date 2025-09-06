@@ -1,0 +1,150 @@
+><!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Eze Supermarket – Products</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+*{box-sizing:border-box;font-family:Poppins,system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Arial;}
+:root{--blue:#007bff;--bg:#f5f7fb;--card:#fff;--text:#333;}
+body{margin:0;min-height:100vh;background:var(--bg);color:var(--text);transition:.3s;}
+body.dark{--bg:#111216;--card:#1f2124;--text:#eaeaea;}
+
+header{background:var(--blue);color:#fff;padding:14px;display:flex;align-items:center;justify-content:space-between;}
+header h1{margin:0;font-size:18px;}
+.balance{font-weight:600;}
+.hamburger{font-size:22px;cursor:pointer;background:none;border:none;color:#fff;margin-right:12px;}
+
+nav{position:fixed;top:0;left:-260px;width:240px;height:100%;background:var(--card);box-shadow:2px 0 6px rgba(0,0,0,.2);padding:20px;transition:.3s;z-index:1000;}
+nav.active{left:0;}
+nav h2{margin:0 0 16px;color:var(--blue);}
+nav ul{list-style:none;padding:0;margin:0;}
+nav li{margin-bottom:12px;}
+nav a{text-decoration:none;color:inherit;display:block;padding:8px;border-radius:6px;}
+nav a:hover{background:var(--blue);color:#fff;}
+
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);display:none;z-index:900;}
+.overlay.active{display:block;}
+
+main{flex:1;padding:20px;margin-top:10px;}
+h2{color:var(--blue);margin-top:0;}
+
+.search-box{margin-bottom:16px;}
+.search-box input{width:100%;padding:10px;border:1px solid #ccc;border-radius:8px;}
+
+.products{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:16px;}
+.product-card{background:var(--card);border-radius:12px;overflow:hidden;box-shadow:0 2px 6px rgba(0,0,0,.08);display:flex;flex-direction:column;transition:.2s;}
+body.dark .product-card{background:#2b2b2b;color:#eee;}
+.product-card img{width:100%;height:140px;object-fit:cover;}
+.product-card .content{padding:12px;flex:1;display:flex;flex-direction:column;}
+.product-card h3{margin:0 0 6px;font-size:16px;}
+.product-card p{margin:0 0 6px;font-size:14px;flex:1;}
+.product-card .price{font-weight:600;margin-bottom:6px;}
+.product-card .rating{margin-bottom:8px;}
+.product-card button{padding:8px 12px;border:none;border-radius:6px;background:var(--blue);color:#fff;cursor:pointer;}
+.product-card button:hover{opacity:.9;}
+</style>
+</head>
+<body>
+
+<div class="overlay" id="overlay"></div>
+
+<nav id="sidebar">
+<h2>Menu</h2>
+<ul>
+<li><a href="dashboard.html">🏠 Dashboard</a></li>
+<li><a href="profile.html">👤 Profile</a></li>
+<li><a href="add-money.html">💳 Add Money</a></li>
+<li><a href="cart.html">🛒 Cart</a></li>
+<li><a href="products.html" class="active">📦 Products</a></li>
+<li><a href="receipts.html">🧾 Receipts</a></li>
+<li><a href="history.html">📊 History</a></li>
+</ul>
+</nav>
+
+<header>
+<div style="display:flex;align-items:center;">
+<button class="hamburger" id="menuBtn">☰</button>
+<h1>Products</h1>
+</div>
+<div class="balance">Balance: ₦<span id="balance">0</span></div>
+</header>
+
+<main>
+<h2>Available Products</h2>
+<div class="search-box">
+<input type="text" id="searchInput" placeholder="Search products...">
+</div>
+<div class="products" id="productsContainer"></div>
+</main>
+
+<script>
+// Helpers
+const $ = id => document.getElementById(id);
+
+// Hamburger toggle
+const menuBtn = $('menuBtn');
+const sidebar = $('sidebar');
+const overlay = $('overlay');
+menuBtn.onclick = () => {sidebar.classList.add('active'); overlay.classList.add('active');};
+overlay.onclick = () => {sidebar.classList.remove('active'); overlay.classList.remove('active');};
+document.querySelectorAll('#sidebar a').forEach(a => a.addEventListener('click', () => {
+    sidebar.classList.remove('active'); overlay.classList.remove('active');
+}));
+
+// Load active user
+let activeUser = JSON.parse(localStorage.getItem('activeUser')||'{}');
+if(!activeUser.email) location.href='login.html';
+$('balance').textContent = Number(activeUser.balance||0).toLocaleString();
+
+// Load products from localStorage (admin-added)
+let products = JSON.parse(localStorage.getItem('products')||'[]');
+
+// Render products
+const productsContainer = $('productsContainer');
+function renderProducts(list){
+    productsContainer.innerHTML = '';
+    if(list.length===0){productsContainer.innerHTML='<p>No products found.</p>'; return;}
+    list.forEach(p=>{
+        const card = document.createElement('div');
+        card.className='product-card';
+        card.innerHTML=`
+            <img src="${p.img}" alt="${p.name}">
+            <div class="content">
+                <h3>${p.name}</h3>
+                <p>${p.desc}</p>
+                <div class="price">₦${p.price.toLocaleString()}</div>
+                <div class="rating">⭐ ${p.rating}</div>
+                <button>Add to Cart</button>
+            </div>
+        `;
+        // Add to cart
+        card.querySelector('button').onclick = () => {
+            let cart = JSON.parse(localStorage.getItem('cart')||'[]');
+            let exists = cart.find(c=>c.id===p.id);
+            if(exists) exists.qty++; else cart.push({...p, qty:1});
+            localStorage.setItem('cart', JSON.stringify(cart));
+            alert(`${p.name} added to cart!`);
+        };
+        productsContainer.appendChild(card);
+    });
+}
+renderProducts(products);
+
+// Search functionality
+$('searchInput').addEventListener('input', e=>{
+    const query = e.target.value.toLowerCase();
+    const filtered = products.filter(p => p.name.toLowerCase().includes(query) || p.desc.toLowerCase().includes(query));
+    renderProducts(filtered);
+});
+
+// Dark mode sync
+const theme = localStorage.getItem('theme');
+if(theme==='dark') document.body.classList.add('dark');
+window.addEventListener('storage', e => {
+    if(e.key==='theme') document.body.classList.toggle('dark', localStorage.getItem('theme')==='dark');
+});
+</script>
+
+</body>
+</html>

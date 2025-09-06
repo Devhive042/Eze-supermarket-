@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Eze Supermarket – Settings</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    *{box-sizing:border-box;font-family:Poppins,system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Arial;}
+    :root{--blue:#007bff;--bg:#f5f7fb;--card:#fff;--text:#333}
+    body{margin:0;min-height:100vh;background:var(--bg);color:var(--text);display:flex;flex-direction:column;transition:.2s}
+    body.dark{--bg:#111216;--card:#1f2124;--text:#eaeaea}
+
+    header{background:var(--blue);color:#fff;padding:12px 16px;display:flex;align-items:center;justify-content:space-between}
+    header .left{display:flex;align-items:center;gap:12px}
+    header h1{margin:0;font-size:18px}
+    header .right{display:flex;align-items:center;gap:12px}
+    .balance{font-weight:600}
+
+    /* Hamburger nav */
+    nav{position:fixed;left:-260px;top:0;height:100vh;width:240px;background:var(--card);box-shadow:2px 0 10px rgba(0,0,0,.12);padding:20px;transition:left .28s;z-index:1200}
+    nav.active{left:0}
+    nav h2{margin:0 0 16px;color:var(--blue)}
+    nav ul{list-style:none;padding:0;margin:0}
+    nav li{margin-bottom:12px}
+    nav a{text-decoration:none;color:inherit;display:block;padding:8px;border-radius:8px}
+    nav a:hover{background:var(--blue);color:#fff}
+
+    .overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);display:none;z-index:1100}
+    .overlay.active{display:block}
+
+    main{flex:1;padding:20px;margin-top:10px}
+    h2{color:var(--blue);margin-top:0}
+    .card{background:var(--card);padding:18px;border-radius:12px;box-shadow:0 6px 18px rgba(0,0,0,.06);margin-bottom:16px}
+    body.dark .card{background:var(--card);}
+
+    .setting-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+    .toggle{position:relative;width:46px;height:26px}
+    .toggle input{display:none}
+    .slider{position:absolute;inset:0;background:#ccc;border-radius:26px;transition:.25s}
+    .slider:before{content:"";position:absolute;left:3px;top:3px;width:20px;height:20px;background:#fff;border-radius:50%;transition:.25s}
+    .toggle input:checked + .slider{background:var(--blue)}
+    .toggle input:checked + .slider:before{transform:translateX(20px)}
+
+    button.primary{background:var(--blue);color:#fff;border:none;padding:10px 14px;border-radius:8px;cursor:pointer}
+    button.danger{background:#d60000;color:#fff;border:none;padding:10px 14px;border-radius:8px;cursor:pointer}
+    a.navlink{color:var(--blue);text-decoration:none}
+
+    footer{padding:12px 20px;text-align:center;color:#777;font-size:13px;border-top:1px solid rgba(0,0,0,.03)}
+  </style>
+</head>
+<body>
+  <!-- Overlay -->
+  <div id="overlay" class="overlay" aria-hidden="true"></div>
+
+  <!-- Sidebar -->
+  <nav id="sidebar" aria-label="Main navigation">
+    <h2>Eze Menu</h2>
+    <ul>
+      <li><a href="dashboard.html">🏠 Dashboard</a></li>
+      <li><a href="profile.html">👤 Profile</a></li>
+      <li><a href="add-money.html">💳 Add Money</a></li>
+      <li><a href="cart.html">🛒 Cart</a></li>
+      <li><a href="products.html">📦 Products</a></li>
+      <li><a href="receipts.html">🧾 Receipts</a></li>
+      <li><a href="history.html">📊 History</a></li>
+    </ul>
+  </nav>
+
+  <!-- Top bar -->
+  <header>
+    <div class="left">
+      <button id="menuBtn" aria-label="Open menu" style="background:transparent;border:1px solid rgba(255,255,255,.17);color:#fff;padding:6px 8px;border-radius:6px;cursor:pointer">☰</button>
+      <h1>Settings</h1>
+    </div>
+
+    <div class="right">
+      <div class="balance">Balance: ₦<span id="balance">0</span></div>
+      <button id="logoutHeader" class="primary" title="Logout">Logout</button>
+    </div>
+  </header>
+
+  <!-- Main -->
+  <main>
+    <h2>User Settings</h2>
+
+    <div class="card">
+      <div class="setting-row">
+        <span>🌙 Dark Mode</span>
+        <label class="toggle" title="Toggle dark mode">
+          <input type="checkbox" id="darkToggle"><span class="slider"></span>
+        </label>
+      </div>
+
+      <div class="setting-row">
+        <span>🔔 Notifications (sound)</span>
+        <label class="toggle" title="Toggle notifications">
+          <input type="checkbox" id="notifToggle"><span class="slider"></span>
+        </label>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>Account</h3>
+      <p>If you log out you can sign in again from the login page.</p>
+      <div style="display:flex;gap:10px;margin-top:12px">
+        <button id="logoutBtn" class="primary">Logout</button>
+        <button id="deleteAccount" class="danger">Delete Account</button>
+      </div>
+    </div>
+  </main>
+
+  <footer>Powered by Eze Supermarket</footer>
+
+  <script>
+    // Simple selector
+    const $ = id => document.getElementById(id);
+
+    // Sidebar & overlay
+    const menuBtn = $('menuBtn');
+    const sidebar = $('sidebar');
+    const overlay = $('overlay');
+
+    menuBtn.addEventListener('click', () => {
+      sidebar.classList.add('active');
+      overlay.classList.add('active');
+    });
+    overlay.addEventListener('click', () => {
+      sidebar.classList.remove('active');
+      overlay.classList.remove('active');
+    });
+
+    // Close sidebar when a nav link is clicked (for SPA feel)
+    document.querySelectorAll('#sidebar a').forEach(a => {
+      a.addEventListener('click', () => {
+        sidebar.classList.remove('active');
+        overlay.classList.remove('active');
+      });
+    });
+
+    // Load active user and ensure logged-in
+    const raw = localStorage.getItem('activeUser');
+    const activeUser = raw ? JSON.parse(raw) : null;
+    if(!activeUser || !activeUser.email){
+      location.href = 'login.html';
+    }
+
+    // Balance display
+    function renderBalance(){
+      const user = JSON.parse(localStorage.getItem('activeUser') || '{}');
+      const bal = user && Number(user.balance) ? Number(user.balance) : 0;
+      $('balance').textContent = bal.toLocaleString();
+    }
+    renderBalance();
+
+    // Theme (use localStorage.theme for consistency across pages)
+    const darkToggle = $('darkToggle');
+    const notifToggle = $('notifToggle');
+
+    // Initialize toggles from storage
+    const storedTheme = localStorage.getItem('theme');
+    if(storedTheme === 'dark'){
+      document.body.classList.add('dark');
+      darkToggle.checked = true;
+    } else {
+      document.body.classList.remove('dark');
+      darkToggle.checked = false;
+    }
+
+    const storedNotify = localStorage.getItem('notify');
+    if(storedNotify === 'yes') notifToggle.checked = true;
+    else notifToggle.checked = false;
+
+    // Toggle handlers
+    darkToggle.addEventListener('change', () => {
+      const dark = darkToggle.checked;
+      document.body.classList.toggle('dark', dark);
+      localStorage.setItem('theme', dark ? 'dark' : 'light');
+      // notify other tabs/pages
+      window.dispatchEvent(new Event('storage'));
+    });
+
+    notifToggle.addEventListener('change', () => {
+      localStorage.setItem('notify', notifToggle.checked ? 'yes' : 'no');
+    });
+
+    // Logout handlers
+    $('logoutBtn').addEventListener('click', () => {
+      localStorage.removeItem('activeUser');
+      location.href = 'login.html';
+    });
+    $('logoutHeader').addEventListener('click', () => {
+      localStorage.removeItem('activeUser');
+      location.href = 'login.html';
+    });
+
+    // Delete account
+    $('deleteAccount').addEventListener('click', () => {
+      if(!confirm('Delete your account? This cannot be undone.')) return;
+      const user = JSON.parse(localStorage.getItem('activeUser') || '{}');
+      if(!user.email){
+        alert('No active account.');
+        return;
+      }
+      let users = JSON.parse(localStorage.getItem('users') || '[]');
+      users = users.filter(u => u.email !== user.email);
+      localStorage.setItem('users', JSON.stringify(users));
+      localStorage.removeItem('activeUser');
+      alert('Account deleted.');
+      location.href = 'register.html';
+    });
+
+    // Sync UI when storage changes in other tabs/pages
+    window.addEventListener('storage', (ev) => {
+      if(ev.key === 'activeUser' || ev.key === null){
+        renderBalance();
+      }
+      if(ev.key === 'theme' || ev.key === null){
+        const t = localStorage.getItem('theme') || 'light';
+        document.body.classList.toggle('dark', t === 'dark');
+        darkToggle.checked = (t === 'dark');
+      }
+      if(ev.key === 'notify' || ev.key === null){
+        const n = localStorage.getItem('notify') || 'no';
+        notifToggle.checked = (n === 'yes');
+      }
+    });
+  </script>
+</body>
+</html>

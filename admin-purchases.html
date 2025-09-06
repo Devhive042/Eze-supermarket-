@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Admin – Purchases Management</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+*{box-sizing:border-box;font-family:Poppins,system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Arial;margin:0;padding:0;}
+:root{--blue:#007bff;--bg:#f5f7fb;--card:#fff;--text:#333;}
+body{min-height:100vh;background:var(--bg);color:var(--text);transition:.3s;}
+body.dark{--bg:#111216;--card:#1f2124;--text:#eaeaea;}
+
+header{background:var(--blue);color:#fff;padding:14px;display:flex;justify-content:space-between;align-items:center;}
+header h1{font-size:20px;}
+header .hamburger{font-size:22px;cursor:pointer;background:none;border:none;color:#fff;}
+
+nav{position:fixed;top:0;left:-220px;width:220px;height:100%;background:var(--card);box-shadow:2px 0 6px rgba(0,0,0,.2);padding:20px;transition:.3s;z-index:1000;}
+nav.active{left:0;}
+nav h2{color:var(--blue);margin-bottom:16px;}
+nav ul{list-style:none;}
+nav li{margin-bottom:12px;}
+nav a{text-decoration:none;color:inherit;padding:8px;display:block;border-radius:6px;}
+nav a:hover{background:var(--blue);color:#fff;}
+
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);display:none;z-index:900;}
+.overlay.active{display:block;}
+
+main{margin-left:220px;padding:20px;transition:margin .3s;}
+main.mobile{margin-left:0;}
+
+table{width:100%;border-collapse:collapse;background:var(--card);border-radius:12px;overflow:hidden;box-shadow:0 2px 6px rgba(0,0,0,.1);}
+th,td{padding:12px;text-align:left;border-bottom:1px solid #ddd;}
+th{background:var(--blue);color:#fff;}
+button.delete, button.download{padding:6px 12px;border:none;border-radius:6px;cursor:pointer;}
+button.delete{background:red;color:#fff;}
+button.download{background:green;color:#fff;}
+button.delete:hover{opacity:.85;}
+button.download:hover{opacity:.85;}
+
+body.dark nav{background:#1f2124;color:#eaeaea;}
+body.dark table{background:#2b2b2b;color:#eee;}
+body.dark th{background:#007bff;}
+body.dark a{color:#eee;}
+body.dark a:hover{color:#fff;}
+
+@media(max-width:768px){
+    main{margin-left:0;}
+}
+</style>
+</head>
+<body>
+
+<div class="overlay" id="overlay"></div>
+
+<nav id="sidebar">
+<h2>Admin Menu</h2>
+<ul>
+<li><a href="admin-dashboard.html">📊 Dashboard</a></li>
+<li><a href="admin-users.html">👥 Users</a></li>
+<li><a href="admin-topups.html">💳 Top-ups</a></li>
+<li><a href="admin-purchases.html" class="active">🛒 Purchases</a></li>
+<li><a href="admin-products.html">📦 Products</a></li>
+<li><a href="login.html" id="logout">🚪 Logout</a></li>
+</ul>
+</nav>
+
+<header>
+<button class="hamburger" id="menuBtn">☰</button>
+<h1>Purchases Management</h1>
+</header>
+
+<main>
+<h2>All Purchases</h2>
+<table id="purchasesTable">
+<thead>
+<tr>
+<th>#</th>
+<th>User Email</th>
+<th>Total (₦)</th>
+<th>Items</th>
+<th>Date</th>
+<th>Actions</th>
+</tr>
+</thead>
+<tbody></tbody>
+</table>
+</main>
+
+<script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/qrcode/build/qrcode.min.js"></script>
+<script>
+const menuBtn = document.getElementById('menuBtn');
+const sidebar = document.getElementById('sidebar');
+const overlay = document.getElementById('overlay');
+const tbody = document.querySelector('#purchasesTable tbody');
+
+menuBtn.onclick = () => { sidebar.classList.add('active'); overlay.classList.add('active'); };
+overlay.onclick = () => { sidebar.classList.remove('active'); overlay.classList.remove('active'); };
+
+// Load purchases
+let purchases = JSON.parse(localStorage.getItem('history')||'[]');
+
+function renderPurchases(){
+    tbody.innerHTML = '';
+    if(purchases.length===0){
+        tbody.innerHTML='<tr><td colspan="6">No purchases found.</td></tr>';
+        return;
+    }
+    purchases.forEach((p,i)=>{
+        const tr = document.createElement('tr');
+        let itemsHtml = p.items.map(it=>`${it.name} x ${it.qty}`).join(', ');
+        tr.innerHTML = `
+            <td>${i+1}</td>
+            <td>${p.user || 'N/A'}</td>
+            <td>₦${p.total.toLocaleString()}</td>
+            <td>${itemsHtml}</td>
+            <td>${p.date}</td>
+            <td>
+                <button class="download">Download</button>
+                <button class="delete">Delete</button>
+            </td>
+        `;
+        // Delete
+        tr.querySelector('.delete').onclick = ()=>{
+            if(confirm('Delete this purchase?')){
+                purchases = purchases.filter(x=>x.id!==p.id);
+                localStorage.setItem('history',JSON.stringify(purchases));
+                renderPurchases();
+            }
+        };
+        // Download
+        tr.querySelector('.download').onclick = async ()=>{
+            const div = document.createElement('div');
+            div.style.background='#fff';
+            div.style.padding='20px';
+            div.style.width='400px';
+            div.innerHTML = `<h3>Receipt #${p.id}</h3>
+                             <p>User: ${p.user}</p>
+                             <p>Date: ${p.date}</p>
+                             <ul>${p.items.map(it=>`<li>${it.name} x ${it.qty} = ₦${(it.price*it.qty).toLocaleString()}</li>`).join('')}</ul>
+                             <p>Total: ₦${p.total.toLocaleString()}</p>
+                             <canvas id="qr"></canvas>`;
+            document.body.appendChild(div);
+            await QRCode.toCanvas(div.querySelector('#qr'), `PurchaseID:${p.id}`, {width:100});
+            html2canvas(div).then(canvas=>{
+                const link = document.createElement('a');
+                link.href = canvas.toDataURL();
+                link.download = `receipt_${p.id}.png`;
+                link.click();
+                document.body.removeChild(div);
+            });
+        };
+        tbody.appendChild(tr);
+    });
+}
+
+renderPurchases();
+
+// Logout
+document.getElementById('logout').onclick = ()=>{
+    localStorage.removeItem('activeUser');
+    location.href='login.html';
+};
+
+// Dark theme sync
+const darkTheme = localStorage.getItem('theme');
+if(darkTheme==='dark'){ document.body.classList.add('dark'); }
+window.addEventListener('storage', e=>{
+    if(e.key==='theme'){ document.body.classList.toggle('dark', localStorage.getItem('theme')==='dark'); }
+});
+</script>
+
+</body>
+</html>

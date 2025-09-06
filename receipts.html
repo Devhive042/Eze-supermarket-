@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Eze Supermarket – Receipts</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+*{box-sizing:border-box;font-family:Poppins,system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Arial;}
+:root{--blue:#007bff;--bg:#f5f7fb;--card:#fff;--text:#333;}
+body{margin:0;min-height:100vh;background:var(--bg);color:var(--text);transition:.3s;}
+body.dark{--bg:#111216;--card:#1f2124;--text:#eaeaea;}
+
+header{background:var(--blue);color:#fff;padding:14px;display:flex;align-items:center;justify-content:space-between;}
+header h1{margin:0;font-size:18px;}
+.balance{font-weight:600;}
+.hamburger{font-size:22px;cursor:pointer;background:none;border:none;color:#fff;margin-right:12px;}
+
+nav{position:fixed;top:0;left:-260px;width:240px;height:100%;background:var(--card);box-shadow:2px 0 6px rgba(0,0,0,.2);padding:20px;transition:.3s;z-index:1000;}
+nav.active{left:0;}
+nav h2{margin:0 0 16px;color:var(--blue);}
+nav ul{list-style:none;padding:0;margin:0;}
+nav li{margin-bottom:12px;}
+nav a{text-decoration:none;color:inherit;display:block;padding:8px;border-radius:6px;}
+nav a:hover{background:var(--blue);color:#fff;}
+
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);display:none;z-index:900;}
+.overlay.active{display:block;}
+
+main{flex:1;padding:20px;margin-top:10px;}
+h2{color:var(--blue);margin-top:0;}
+
+.receipt{
+  background:var(--card);
+  padding:16px 20px;
+  border-radius:10px;
+  margin-bottom:16px;
+  box-shadow:0 2px 6px rgba(0,0,0,.08);
+  max-width:360px;
+  font-size:14px;
+  line-height:1.4;
+  position:relative;
+}
+body.dark .receipt{background:#2b2b2b;color:#eee;}
+
+.receipt h3{
+  margin:0 0 6px;
+  font-size:16px;
+  text-align:center;
+  letter-spacing:1px;
+}
+.receipt .store-name{
+  text-align:center;
+  font-weight:600;
+  margin-bottom:4px;
+}
+.receipt .date{
+  font-size:12px;
+  color:#555;
+  text-align:center;
+  margin-bottom:8px;
+}
+.receipt ul{padding-left:16px;margin:0;border-top:1px dashed #ccc;border-bottom:1px dashed #ccc;padding:8px 0;}
+.receipt li{margin-bottom:4px;display:flex;justify-content:space-between;}
+.receipt .total{font-weight:700;text-align:right;margin-top:8px;font-size:15px;}
+.receipt .qr{margin-top:8px;text-align:center;}
+.receipt button.download-btn{
+  display:block;
+  margin:12px auto 0;
+  padding:6px 12px;
+  background:var(--blue);
+  color:#fff;
+  border:none;
+  border-radius:6px;
+  cursor:pointer;
+}
+.receipt button.download-btn:hover{opacity:.9;}
+</style>
+</head>
+<body>
+
+<div class="overlay" id="overlay"></div>
+
+<nav id="sidebar">
+<h2>Menu</h2>
+<ul>
+<li><a href="dashboard.html">🏠 Dashboard</a></li>
+<li><a href="profile.html">👤 Profile</a></li>
+<li><a href="add-money.html">💳 Add Money</a></li>
+<li><a href="cart.html">🛒 Cart</a></li>
+<li><a href="products.html">📦 Products</a></li>
+<li><a href="receipts.html" class="active">🧾 Receipts</a></li>
+<li><a href="history.html">📊 History</a></li>
+</ul>
+</nav>
+
+<header>
+<div style="display:flex;align-items:center;">
+<button class="hamburger" id="menuBtn">☰</button>
+<h1>Receipts</h1>
+</div>
+<div class="balance">Balance: ₦<span id="balance">0</span></div>
+</header>
+
+<main>
+<h2>Your Receipts</h2>
+<div id="receiptsContainer"></div>
+</main>
+
+<script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/qrcode/build/qrcode.min.js"></script>
+<script>
+const $ = id => document.getElementById(id);
+
+// Hamburger
+const menuBtn = $('menuBtn'), sidebar = $('sidebar'), overlay = $('overlay');
+menuBtn.onclick = ()=>{sidebar.classList.add('active'); overlay.classList.add('active');};
+overlay.onclick = ()=>{sidebar.classList.remove('active'); overlay.classList.remove('active');};
+document.querySelectorAll('#sidebar a').forEach(a=>a.addEventListener('click',()=>{sidebar.classList.remove('active'); overlay.classList.remove('active');}));
+
+// Load active user
+let activeUser = JSON.parse(localStorage.getItem('activeUser')||'{}');
+if(!activeUser.email) location.href='login.html';
+$('balance').textContent = Number(activeUser.balance||0).toLocaleString();
+
+// Load user-specific receipts
+let history = JSON.parse(localStorage.getItem('history')||'[]').filter(h => h.user === activeUser.email);
+const receiptsContainer = $('receiptsContainer');
+
+function renderReceipts(){
+    receiptsContainer.innerHTML = '';
+    if(history.length===0){receiptsContainer.innerHTML='<p>No receipts yet.</p>'; return;}
+    
+    history.slice().reverse().forEach(h => {
+        const div = document.createElement('div');
+        div.className = 'receipt';
+        let itemsHtml = '<ul>';
+        h.items.forEach(i=>{
+            itemsHtml += `<li><span>${i.name} x${i.qty}</span><span>₦${(i.price*i.qty).toLocaleString()}</span></li>`;
+        });
+        itemsHtml += '</ul>';
+        div.innerHTML = `
+            <div class="store-name">EZE SUPERMARKET</div>
+            <h3>Receipt #${h.id}</h3>
+            <div class="date">${h.date}</div>
+            ${itemsHtml}
+            <div class="total">Total: ₦${h.total.toLocaleString()}</div>
+            <div class="qr" id="qr_${h.id}"></div>
+            <button class="download-btn">Download</button>
+        `;
+        receiptsContainer.appendChild(div);
+
+        // Generate QR code
+        QRCode.toCanvas(document.getElementById(`qr_${h.id}`), JSON.stringify({
+            user: activeUser.email,
+            total: h.total,
+            date: h.date,
+            items: h.items
+        }), {width:100}, function (error) {
+            if(error) console.error(error);
+        });
+
+        // Download receipt as image
+        div.querySelector('.download-btn').onclick = ()=>{
+            html2canvas(div).then(canvas=>{
+                const link = document.createElement('a');
+                link.download = `receipt_${h.id}.png`;
+                link.href = canvas.toDataURL();
+                link.click();
+            });
+        };
+    });
+}
+
+renderReceipts();
+
+// Dark mode sync
+const theme = localStorage.getItem('theme');
+if(theme==='dark') document.body.classList.add('dark');
+window.addEventListener('storage', e => {
+    if(e.key==='theme') document.body.classList.toggle('dark', localStorage.getItem('theme')==='dark');
+});
+</script>
+
+</body>
+</html>
